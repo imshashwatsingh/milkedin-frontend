@@ -1,56 +1,310 @@
-# Welcome to your Expo app 👋
+# milkedIn — Frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform **React Native (Expo)** mobile app for tracking daily milk consumption and spending. Built with **Expo Router** (file-based navigation), **TypeScript**, and a clean, layered architecture, `milkedIn` connects to the [`milk_logs_backend`](../milk_logs_backend) REST API to let users log milk by category, review daily/monthly summaries, visualize trends, and export their data as PDF or Excel.
 
-## Get started
+> Works on **Android, iOS, and Web** from a single codebase.
 
-1. Install dependencies
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Navigation & Screens](#navigation--screens)
+- [State & Authentication](#state--authentication)
+- [API Client](#api-client)
+- [Theming & Design System](#theming--design-system)
+- [Exporting Data](#exporting-data)
+- [Setup & Installation](#setup--installation)
+- [Environment Variables](#environment-variables)
+- [Running the App](#running-the-app)
+- [Build & Deploy](#build--deploy)
+- [Scripts](#scripts)
+
+---
+
+## Features
+
+- **Authentication** — register, login, logout, forgot/reset password (OTP emailed from the backend), and profile editing. Sessions persist securely across app launches.
+- **Today view** — log a milk entry for the day, see a live breakdown by category, and view daily totals.
+- **History** — browse past entries by date with a calendar, edit or delete any record.
+- **Insights** — daily/monthly aggregated summaries with bar charts and stat tiles.
+- **Milk & Price** — manage your milk **categories** (types) and their per-litre prices.
+- **Export** — download a PDF or Excel report for any month or year, shared via the OS share sheet (or browser download on web).
+- **Resilient networking** — automatic JWT access-token refresh, short-lived GET cache, and friendly error messages.
+- **Polished UI** — warm white-first design system, large touch targets, soft layered shadows, and animations.
+
+---
+
+## Tech Stack
+
+| Concern            | Technology                                              |
+| ------------------ | ------------------------------------------------------- |
+| Framework          | Expo SDK 57 (`expo` ~57.0.12)                           |
+| Runtime / Language | React 19 + TypeScript (`strict`)                        |
+| Navigation         | `expo-router` (file-based, typed routes)                |
+| Auth storage       | `expo-secure-store` (native) / `localStorage` (web)     |
+| Charts / analytics | Custom `BarChart` component (no external chart dep)      |
+| Export (client)    | `jspdf`, `xlsx`                                         |
+| Animations         | `react-native-reanimated` + `react-native-worklets`      |
+| Gestures / UI      | `react-native-gesture-handler`, `react-native-screens`, `react-native-safe-area-context` |
+| Icons              | `@expo/vector-icons` (Ionicons)                          |
+
+---
+
+## Architecture
+
+The app follows a **layered, feature-aligned** structure that mirrors the backend:
+
+```
+Screen (src/app) → Hooks → Services (API) → HTTP Client → Backend
+                      ↘ UI Components / Theme
+```
+
+- **`src/app`** — file-based routes (Expo Router). Parenthesis groups `(auth)` and `(tabs)` are **route groups** that don't affect the URL but let us apply shared layouts (auth stack vs. tab stack). Route-based **guards** (`Stack.Protected`) show the tabs only when authenticated, and the auth screens otherwise.
+- **`src/services/api`** — typed wrappers per backend domain (`auth`, `categories`, `milk`, `export`) built on a single shared `client`.
+- **`src/auth`** — `AuthContext` (current user + tokens, session restore) and `storage` (secure persistence).
+- **`src/hooks`** — reusable data-fetching (`useApiData`) and lifecycle (`useRefreshOnFocus`) hooks.
+- **`src/components`** — presentational building blocks grouped by domain (`ui`, `milk`, `calendar`, `analytics`, `export`, `navigation`).
+- **`src/theme`** — centralized design tokens (colors, spacing, radii, typography, shadows) and the navigation theme.
+- **`src/utils`** — pure helpers (`date`, `format`, `validation`, `records`, `analytics`, `exporters`).
+- **`src/types`** — TypeScript contracts mirroring the backend API (`api.ts`, `index.ts`).
+- **`src/constants`** — app-wide constants (e.g. `API_PORT`).
+
+### Data flow
+
+1. A screen calls a typed service function (e.g. `milk.getRecords()`).
+2. The service delegates to the shared `client.request()`, which resolves the base URL, attaches the Bearer token, and (on `401`) transparently refreshes the access token once and retries.
+3. The client unwraps the backend's `{ success, message, data }` envelope and returns `data` typed as `T`.
+4. Screens consume results through `useApiData`, which exposes `{ data, loading, error, refetch }` with friendly error strings and refetch-on-focus.
+
+---
+
+## Project Structure
+
+```
+milk_logs_frontend/
+├── app.json                     # Expo config (name, scheme, plugins, web output)
+├── package.json
+├── tsconfig.json                # Path alias: @/* → src/*
+├── .env.example                 # EXPO_PUBLIC_API_URL
+├── src/
+│   ├── app/                     # Expo Router screens
+│   │   ├── _layout.tsx          # Root: AuthProvider + guarded stacks
+│   │   ├── (auth)/              # login, register, forgot-password, reset-password
+│   │   ├── (tabs)/              # Today, History, Insights, Milk & Price
+│   │   ├── add-milk.tsx         # Create a record
+│   │   ├── edit-milk/[id].tsx   # Edit a record
+│   │   └── update-profile.tsx   # Edit profile
+│   ├── auth/
+│   │   ├── AuthContext.tsx      # Session state + token refresh wiring
+│   │   └── storage.ts           # SecureStore / localStorage persistence
+│   ├── services/api/
+│   │   ├── client.ts            # HTTP client, refresh, cache, ApiError
+│   │   ├── auth.ts  categories.ts  milk.ts  export.ts
+│   ├── hooks/
+│   │   ├── useApiData.ts        # data/loading/error/refetch
+│   │   └── useRefreshOnFocus.ts
+│   ├── components/
+│   │   ├── ui/                  # Button, Card, Field, Banner, Screen, …
+│   │   ├── milk/                # MilkForm, HistoryItem, SummaryCard, …
+│   │   ├── calendar/  analytics/  export/  navigation/
+│   ├── theme/                   # index.ts (tokens) + navigation.ts
+│   ├── types/                   # api.ts + index.ts
+│   ├── utils/                   # date, format, validation, records, analytics, exporters
+│   └── constants/api.ts
+└── assets/                      # icons, splash, images
+```
+
+---
+
+## Navigation & Screens
+
+Routing is **file-based** via Expo Router. The root layout (`src/app/_layout.tsx`) wraps everything in `AuthProvider` and splits the tree with `Stack.Protected` guards:
+
+- **Authenticated** (`guard={!!user}`):
+  - `(tabs)` bottom tab bar:
+    - **Today** (`index`) — add/log today's milk, live category breakdown, daily totals.
+    - **History** (`history`) — calendar + list of past entries; tap to edit/delete.
+    - **Insights** (`insights`) — daily/monthly summaries with charts.
+    - **Milk & Price** (`settings`) — manage categories and prices.
+  - Stack screens: `add-milk`, `edit-milk/[id]`, `update-profile`.
+- **Unauthenticated** (`guard={!user}`):
+  - `(auth)` stack: `login`, `register`, `forgot-password`, `reset-password`.
+
+The splash screen stays visible until a persisted session is restored, so returning users never see a login flash.
+
+---
+
+## State & Authentication
+
+`AuthContext` (`src/auth/AuthContext.tsx`) is the single source of truth for the session:
+
+- On launch it restores `{ user, accessToken, refreshToken }` from secure storage (`storage.ts`).
+- `signIn` / `registerAndSignIn` / `updateProfile` / `signOut` mutate state and persist it.
+- It wires the HTTP client via `configureAuthClient({ getAccessToken, refreshAccessToken, onUnauthorized })`:
+  - `getAccessToken` supplies the current Bearer token.
+  - `refreshAccessToken` calls `/api/auth/refresh-token` with the stored refresh token, then saves the new access token. On failure it clears the session and signs the user out.
+  - `onUnauthorized` force-signs-out on an unrecoverable `401`.
+
+Tokens are stored with `expo-secure-store` on native and `localStorage` on web (with safe try/catch fallbacks). **No secrets live in source code.**
+
+---
+
+## API Client
+
+`src/services/api/client.ts` is a thin, dependency-free `fetch` wrapper:
+
+- **Base URL resolution** — `EXPO_PUBLIC_API_URL` → Expo dev-server LAN host on `API_PORT` (4000) → `localhost:4000`.
+- **Auth** — attaches `Authorization: Bearer <token>` and retries once after a transparent refresh.
+- **GET cache** — in-memory cache (60s TTL) keyed by URL + token; any mutation invalidates it. Aligns with `useRefreshOnFocus` so data is fresh after add/edit.
+- **Error model** — a single `ApiError` class with `kind` (`network` | `http` | `unknown`) and a **user-friendly** message (e.g. network down, session ended, server error). It best-effort extracts messages from Express HTML error pages.
+- **Binary** — `requestBlob()` fetches exports (PDF/XLSX) as bytes with the same auth/refresh handling.
+
+Service modules map 1:1 to backend endpoints (see `auth.ts`, `milk.ts`, `categories.ts`, `export.ts`).
+
+---
+
+## Theming & Design System
+
+All visual decisions live in `src/theme/index.ts` as design tokens:
+
+- **Colors** — calm, warm, white-first palette (`background #F4F6F9`, `primary #2D6CDF`, dairy `accent #E08A1E`, plus semantic success/warning/danger and soft tints).
+- **Shadows** — layered `sm` / `md` / `lg` for floating controls and cards.
+- **Spacing / Radii** — consistent scale and rounded corner radii (`pill`, `xl`, …).
+- **Typography** — large, high-contrast text styles (`screenTitle`, `sectionTitle`, `body`, `huge`, …).
+- **Touch targets** — `minHeight: 56` baseline for accessibility.
+
+Reusable primitives in `src/components/ui` (Button, Card, Field, Banner, Screen, Text, ConfirmDialog, QuantityStepper, DateStepper, etc.) consume these tokens so the whole app stays visually consistent.
+
+---
+
+## Exporting Data
+
+Two paths cooperate:
+
+1. **Backend-generated files** — `services/api/export.ts` calls `GET /api/logs/export?format=pdf|excel&startDate&endDate`, resolving a period (month/year) to an inclusive date range via `periodDateRange`, then `requestBlob` returns the raw bytes + filename.
+2. **Device saving** — `utils/exporters.ts` `saveFile()` writes bytes to the cache and opens the OS **share sheet** on native, or triggers a real browser download on web (Uint8Array → base64 → `Share`/`Blob`).
+
+The Export Sheet UI (`components/export/ExportSheet.tsx`) lets users pick a period and format.
+
+---
+
+## Setup & Installation
+
+### Prerequisites
+
+- **Node.js 18+**
+- The [`milk_logs_backend`](../milk_logs_backend) running and reachable (default port `4000`).
+- For device/emulator testing: the **Expo Go** app or a **development build**, plus (for native) Xcode (iOS) / Android Studio (Android).
+
+### Steps
+
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. **Configure the API URL**
+
+   Copy the example and set your backend URL:
 
    ```bash
-   npx expo start
+   cp .env.example .env
    ```
 
-In the output, you'll find options to open the app in a
+   ```bash
+   # .env
+   EXPO_PUBLIC_API_URL=http://192.168.1.100:4000
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   > In development you can leave `EXPO_PUBLIC_API_URL` unset — the app auto-detects the Expo dev-server LAN host on port `4000`. For physical devices and production builds you **must** set it to a URL the device can reach (use your machine's LAN IP, or the deployed backend URL).
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+3. **(Optional) Start the backend**
 
-## Get a fresh project
+   From the backend folder:
 
-When you're ready, run:
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## Environment Variables
+
+| Variable              | Description                                                                 |
+| --------------------- | --------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL` | Base URL of the backend API. Required for physical devices / production builds. In dev it can be omitted (auto-resolved to the LAN host on port `4000`). |
+
+All other configuration (JWT secrets, database, email) lives in the **backend** `.env`.
+
+---
+
+## Running the App
 
 ```bash
-npm run reset-project
+# Start the Expo dev server (Metro)
+npm start
+
+# Or target a platform directly:
+npm run android
+npm run ios
+npm run web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then open the app:
 
-### Other setup steps
+- **Expo Go** — scan the QR code from the terminal / Expo Dev Tools.
+- **Development build** — scan the QR code to load the bundle into your build.
+- **Web** — opens at `http://localhost:8081` (the origin allow-listed by the backend CORS config).
+- **Emulator/Simulator** — press `a` (Android) or `i` (iOS) in the Expo CLI.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+First launch shows the auth stack; register or sign in, then you land on the **Today** tab.
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## Build & Deploy
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This project is configured in `app.json` for Expo's EAS and web static output (`web.output: "static"`).
 
-## Join the community
+### Web (static)
 
-Join our community of developers creating universal apps.
+```bash
+npx expo export --platform web
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The output in `dist/` can be hosted on any static host (Vercel, Netlify, etc.). Ensure `EXPO_PUBLIC_API_URL` points at your deployed backend, and that the backend CORS `allowedOrigins` includes your web origin.
+
+### Android / iOS (EAS Build)
+
+1. Install EAS CLI: `npm install -g eas-cli`
+2. `eas login`
+3. Configure: `eas build:configure`
+4. Build:
+
+   ```bash
+   eas build --platform android
+   eas build --platform ios
+   ```
+
+Set `EXPO_PUBLIC_API_URL` to your production backend before building (via EAS "Environment Variables" or `.env`).
+
+---
+
+## Scripts
+
+| Script            | Action                                              |
+| ----------------- | --------------------------------------------------- |
+| `npm start`       | Start the Expo dev server (Metro).                 |
+| `npm run android` | Run on Android emulator/device.                    |
+| `npm run ios`     | Run on iOS simulator/device.                       |
+| `npm run web`     | Run in the browser.                                |
+| `npm run lint`    | Lint with `expo lint` (ESLint).                    |
+| `npm run typecheck` | Type-check with `tsc --noEmit`.                  |
+
+---
+
+> **Tip:** Keep the backend and frontend env URLs in sync. The backend serves `http://localhost:8081`/`127.0.0.1:8081` as allowed CORS origins for web dev — update `src/app.js` `allowedOrigins` in the backend when deploying.
