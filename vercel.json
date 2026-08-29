@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
+  "devCommand": "expo start --web",
+  "installCommand": "npm install",
+  "cleanUrls": true,
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/"
+    }
+  ]
+}
