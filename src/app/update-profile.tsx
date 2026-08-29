@@ -96,6 +96,8 @@ export default function UpdateProfileScreen() {
               autoComplete="email"
               placeholder="you@example.com"
               error={errors.email}
+              editable={false}
+              hint="Your email is locked and cannot be changed."
             />
           </Card>
 

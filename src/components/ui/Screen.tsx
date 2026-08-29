@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '@/theme';
@@ -20,6 +20,10 @@ interface ScreenProps {
 /**
  * Standard app screen: white background, optional title header, and either a
  * constrained view or scroll view for the content.
+ *
+ * Wrapped in SafeAreaView (so it respects notches and the Android system/
+ * navigation bar) and KeyboardAvoidingView (so focused inputs are revealed
+ * when the soft keyboard opens).
  */
 export function Screen({ title, subtitle, scroll = true, contentStyle, scrollStyle, children }: ScreenProps) {
   const header =
@@ -34,21 +38,29 @@ export function Screen({ title, subtitle, scroll = true, contentStyle, scrollSty
       </View>
     ) : null;
 
+  const body = scroll ? (
+    <ScrollView
+      style={styles.flex}
+      contentContainerStyle={[styles.scrollContent, scrollStyle]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled">
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={styles.flex}>{children}</View>
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={[styles.container, contentStyle]}>
-        {header}
-        {scroll ? (
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={[styles.scrollContent, scrollStyle]}
-            showsVerticalScrollIndicator={false}>
-            {children}
-          </ScrollView>
-        ) : (
-          <View style={styles.flex}>{children}</View>
-        )}
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}>
+        <View style={[styles.container, contentStyle]}>
+          {header}
+          {body}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
