@@ -3,6 +3,9 @@
     "name": "milkedIn",
     "slug": "milkdin",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "milkdin",
