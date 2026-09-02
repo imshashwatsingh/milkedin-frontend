@@ -123,3 +123,12 @@ export interface MonthlySummary {
   total_amount: number;
   daily_breakdown: MonthlyBreakdownRow[];
 }
+
+export interface AIChatRequest {
+  message: string;
+}
+
+export interface AIChatResponse {
+  answer: string;
+  tools_used?: string[];
+}

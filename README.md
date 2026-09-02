@@ -15,6 +15,7 @@ A cross-platform **React Native (Expo)** mobile app for tracking daily milk cons
 - [Navigation & Screens](#navigation--screens)
 - [State & Authentication](#state--authentication)
 - [API Client](#api-client)
+- [AI Assistant](#ai-assistant)
 - [Theming & Design System](#theming--design-system)
 - [Exporting Data](#exporting-data)
 - [Setup & Installation](#setup--installation)
@@ -32,6 +33,7 @@ A cross-platform **React Native (Expo)** mobile app for tracking daily milk cons
 - **History** — browse past entries by date with a calendar, edit or delete any record.
 - **Insights** — daily/monthly aggregated summaries with bar charts and stat tiles.
 - **Milk & Price** — manage your milk **categories** (types) and their per-litre prices.
+- **MilkEdin AI** — natural-language assistant (Gemini via backend) for questions like "How much did I spend last month?" in a chat tab with suggestions, tool-grounded answers, and retry.
 - **Export** — download a PDF or Excel report for any month or year, shared via the OS share sheet (or browser download on web).
 - **Resilient networking** — automatic JWT access-token refresh, short-lived GET cache, and friendly error messages.
 - **Polished UI** — warm white-first design system, large touch targets, soft layered shadows, and animations.
@@ -94,7 +96,7 @@ milk_logs_frontend/
 │   ├── app/                     # Expo Router screens
 │   │   ├── _layout.tsx          # Root: AuthProvider + guarded stacks
 │   │   ├── (auth)/              # login, register, forgot-password, reset-password
-│   │   ├── (tabs)/              # Today, History, Insights, Milk & Price
+│   │   ├── (tabs)/              # Today, History, Insights, AI, Milk & Price
 │   │   ├── add-milk.tsx         # Create a record
 │   │   ├── edit-milk/[id].tsx   # Edit a record
 │   │   └── update-profile.tsx   # Edit profile
@@ -103,7 +105,7 @@ milk_logs_frontend/
 │   │   └── storage.ts           # SecureStore / localStorage persistence
 │   ├── services/api/
 │   │   ├── client.ts            # HTTP client, refresh, cache, ApiError
-│   │   ├── auth.ts  categories.ts  milk.ts  export.ts
+│   │   ├── auth.ts  categories.ts  milk.ts  export.ts  ai.ts
 │   ├── hooks/
 │   │   ├── useApiData.ts        # data/loading/error/refetch
 │   │   └── useRefreshOnFocus.ts
@@ -125,10 +127,11 @@ milk_logs_frontend/
 Routing is **file-based** via Expo Router. The root layout (`src/app/_layout.tsx`) wraps everything in `AuthProvider` and splits the tree with `Stack.Protected` guards:
 
 - **Authenticated** (`guard={!!user}`):
-  - `(tabs)` bottom tab bar:
+  - `(tabs)` bottom tab bar (5 tabs):
     - **Today** (`index`) — add/log today's milk, live category breakdown, daily totals.
     - **History** (`history`) — calendar + list of past entries; tap to edit/delete.
     - **Insights** (`insights`) — daily/monthly summaries with charts.
+    - **AI** (`ai`, `sparkles-outline`) — MilkEdin AI chat (see AI Assistant below).
     - **Milk & Price** (`settings`) — manage categories and prices.
   - Stack screens: `add-milk`, `edit-milk/[id]`, `update-profile`.
 - **Unauthenticated** (`guard={!user}`):
@@ -163,9 +166,20 @@ Tokens are stored with `expo-secure-store` on native and `localStorage` on web (
 - **Error model** — a single `ApiError` class with `kind` (`network` | `http` | `unknown`) and a **user-friendly** message (e.g. network down, session ended, server error). It best-effort extracts messages from Express HTML error pages.
 - **Binary** — `requestBlob()` fetches exports (PDF/XLSX) as bytes with the same auth/refresh handling.
 
-Service modules map 1:1 to backend endpoints (see `auth.ts`, `milk.ts`, `categories.ts`, `export.ts`).
+Service modules map 1:1 to backend endpoints (see `auth.ts`, `milk.ts`, `categories.ts`, `export.ts`, `ai.ts`).
 
 ---
+
+## AI Assistant
+
+**MilkEdin AI** — a first-class chat tab grounded in your private milk data.
+
+- **Tab:** `AI` (`src/app/(tabs)/ai.tsx`, `sparkles-outline`, 4th position: Today → History → Insights → **AI** → Milk & Price). Authenticated-only via existing `Stack.Protected guard={!!user}`.
+- **Backend:** `POST /api/ai/chat` with `{ message: string (1–1000 chars) }` → `{ answer: string, tools_used?: string[] }`. Frontend only sends `message`; `userId` is injected server-side. Gemini is never called from the frontend — no `EXPO_PUBLIC_GEMINI_API_KEY` exists.
+- **Service:** `src/services/api/ai.ts` `sendAIMessage(message)` → `request<AIChatResponse>('/api/ai/chat', {method:'POST', body:{message}})` reusing the shared `client.ts` (Bearer token + refresh preserved). Types `AIChatRequest`/`AIChatResponse` in `src/types/api.ts`.
+- **UI:** `Screen` `scroll={false}` (KeyboardAvoidingView inside) + `FlatList` conversation, user (primary) / assistant (surface) bubbles with `FadeInView`, typing indicator (`AI is thinking…` + ActivityIndicator), empty state (`sparkles`, subtitle, 6 suggestion chips), compact chip strip above composer once chat starts, composer (`TextInput` multiline + circular `arrow-up` send, 56pt touch target, Enter-to-send on web, disabled while `sending` or empty/whitespace, single pending request guard), error bubble with `Try again` retry.
+- **UX:** Suggestions (`How much did I spend last month?`, `Which milk do I consume the most?`, `Am I spending more than usual?`, `What was my most expensive month?`, `How much milk did I consume this month?`, `Show me my milk spending trend.`) send immediately on tap. No persistence (session memory only), no `useApiData` forced into chat, no tool internals exposed, no HTML/markdown parsing — answer rendered as `Text`.
+- **a11y & responsive:** Labels (`Ask MilkEdin AI`, `Send message`, `Retry message`, `Ask: …`), roles, contrast via theme tokens, Android/iOS/Web tested, keyboard stays above composer via `Screen`'s `KeyboardAvoidingView`, scrollable list.
 
 ## Theming & Design System
 
