@@ -15,10 +15,10 @@
 
 import Constants from 'expo-constants';
 
-import { API_PORT } from '@/constants/api';
+import { API_PORT } from '@/constants/api'; // API_PORT is the backend port (see its `.env`, PORT=4000)./
 import type { ApiEnvelope } from '@/types';
 
-const API_ENV_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_ENV_URL = process.env.EXPO_PUBLIC_API_URL || `http://localhost:${API_PORT}`;
 
 export function resolveBaseUrl(): string {
   if (API_ENV_URL) return API_ENV_URL.replace(/\/+$/, '');
