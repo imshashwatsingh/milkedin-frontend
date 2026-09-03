@@ -1,6 +1,7 @@
 # milkedIn — Frontend
+> **Brand:** `milkedIn` (lowercase **m**, capital **I**) — formerly "Milk Logs". Codebase folders remain `milk_logs_frontend/` / `milk_logs_backend/` for history; all product references are now **milkedIn**.
 
-A cross-platform **React Native (Expo)** mobile app for tracking daily milk consumption and spending. Built with **Expo Router** (file-based navigation), **TypeScript**, and a clean, layered architecture, `milkedIn` connects to the [`milk_logs_backend`](../milk_logs_backend) REST API to let users log milk by category, review daily/monthly summaries, visualize trends, and export their data as PDF or Excel.
+A cross-platform **React Native (Expo)** app for **milkedIn** — tracking daily milk consumption and spending. Built with **Expo Router** (file-based navigation), **TypeScript**, and a clean, layered architecture, `milkedIn` connects to the [`milkedIn backend`](../milk_logs_backend) (`milk_logs_backend/` folder) REST API to let users log milk by category, review daily/monthly summaries, visualize trends, and export their data as PDF or Excel.
 
 > Works on **Android, iOS, and Web** from a single codebase.
 
@@ -87,8 +88,8 @@ Screen (src/app) → Hooks → Services (API) → HTTP Client → Backend
 ## Project Structure
 
 ```
-milk_logs_frontend/
-├── app.json                     # Expo config (name, scheme, plugins, web output)
+milkedIn-frontend/  (repo folder: milk_logs_frontend/ — kept for history)
+├── app.json                     # Expo config (name: milkedIn, scheme: milkdin, plugins, web output)
 ├── package.json
 ├── tsconfig.json                # Path alias: @/* → src/*
 ├── .env.example                 # EXPO_PUBLIC_API_URL
@@ -193,6 +194,11 @@ All visual decisions live in `src/theme/index.ts` as design tokens:
 
 Reusable primitives in `src/components/ui` (Button, Card, Field, Banner, Screen, Text, ConfirmDialog, QuantityStepper, DateStepper, etc.) consume these tokens so the whole app stays visually consistent.
 
+### New in milkedIn — Responsive & Calendar (added without breaking existing system)
+
+- **Responsive Web Shell** (`src/components/layout/WebSidebar.tsx` + `src/hooks/useResponsive.ts` + `src/components/ui/Screen.tsx`): `WebSidebar` (260px, sticky, channel-aware) on `web ≥1024px`; bottom tabs on mobile. `Screen` gains `maxWidth` (`default 1120 / narrow 720 / wide 1280`), centered `alignSelf: center`, and adaptive padding (`xl` → `32` on desktop). Kept 100% backward compatible — mobile layout untouched.
+- **Modern Calendar** (`src/components/calendar/Calendar.tsx`): replaces the dot-only day with **heatmap intensity** (`primarySoft` → `#A9C2FD` by `quantity/max`), **quantity pill** (`water` + `"2L"`), **count badge** (`×N` for multiple entries), **TODAY** pill, and a 4-item **legend** (No entry / Logged / More milk / Today). Responsive (`0.92` aspect on web) and wrapped in `shadows.sm`.
+
 ---
 
 ## Exporting Data
@@ -211,7 +217,7 @@ The Export Sheet UI (`components/export/ExportSheet.tsx`) lets users pick a peri
 ### Prerequisites
 
 - **Node.js 18+**
-- The [`milk_logs_backend`](../milk_logs_backend) running and reachable (default port `4000`).
+- The **milkedIn backend** (`milk_logs_backend/` folder, formerly Milk Logs) running and reachable (default port `4000`).
 - For device/emulator testing: the **Expo Go** app or a **development build**, plus (for native) Xcode (iOS) / Android Studio (Android).
 
 ### Steps
@@ -305,6 +311,20 @@ The output in `dist/` can be hosted on any static host (Vercel, Netlify, etc.). 
    ```
 
 Set `EXPO_PUBLIC_API_URL` to your production backend before building (via EAS "Environment Variables" or `.env`).
+
+### Android — Downloadable APK on push/merge to `main` (added, non-breaking)
+
+`milkedIn` now builds a **downloadable `.apk`** automatically — no manual EAS dashboard hunting.
+
+- **Workflow:** `.github/workflows/build-android-apk.yml` triggers on `push → main`, `pull_request (closed+merged) → main`, and `workflow_dispatch`. Guard: PRs must be merged.
+- **What it does:**
+  1. `setup-node 22` (npm cache) + `setup-java 17` + `setup-android`
+  2. `npm ci` + `npm install -g eas-cli`
+  3. **Cloud build (if `EXPO_TOKEN` set):** `eas build -p android --profile preview --wait --non-interactive` → APK link in `expo.dev` Builds dashboard. `eas.json:11` forces `preview.android.buildType: apk` (was implicit).
+  4. **Local build (always):** `npx expo prebuild --platform android --clean` → `android/gradlew assembleRelease || assembleDebug` → `actions/upload-artifact@v4` (`milkedin-apk-<sha>`, 30-day retention) — download from **Actions → run → Artifacts**.
+  5. **Release:** `softprops/action-gh-release@v2` creates tag `build-<sha>` on `push` to `main` and attaches `*.apk` — download from **Releases** page.
+- **How to get the APK:** Push or merge to `main` → open GitHub → **Actions** → latest `Android APK Build` → **Artifacts** *or* **Releases → build-<sha>**. Cloud build alternative: `expo.dev` → Builds. No `EXPO_TOKEN`? Local artifact still builds via debug keystore.
+- **OTA stays separate:** `.github/workflows/update-android.yml` still publishes `eas update --branch preview --platform android` on `push → main` for JS-only updates.
 
 ---
 
