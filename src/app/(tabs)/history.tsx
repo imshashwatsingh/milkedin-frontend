@@ -15,6 +15,7 @@ import type { Period } from '@/services/api/export';
 import { getMonthlySummary, getRecords } from '@/services/api/milk';
 import { useApiData } from '@/hooks/useApiData';
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus';
+import { useResponsive } from '@/hooks/useResponsive';
 import { colors, spacing } from '@/theme';
 import { formatMonthYear, milkLogDateToKey, monthKeyOf, toDateKey } from '@/utils/date';
 import { formatLitres, formatRupees, toNumber } from '@/utils/format';
@@ -26,6 +27,7 @@ function startOfMonthView(date: Date): Date {
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const { isDesktop } = useResponsive();
 
   const todayKey = toDateKey(new Date());
   const [selectedKey, setSelectedKey] = useState(todayKey);
@@ -105,6 +107,88 @@ export default function HistoryScreen() {
     return (
       <Screen title="History" subtitle="Every milk entry you have recorded">
         <LoadingView />
+      </Screen>
+    );
+  }
+
+  // Responsive: on desktop show calendar + details side-by-side
+  if (isDesktop) {
+    return (
+      <Screen title="History" subtitle="Tap a day to see what you bought">
+        <View style={styles.desktopGrid}>
+          <View style={styles.desktopLeft}>
+            <FadeInView delay={0}>
+              <Calendar
+                selectedKey={selectedKey}
+                onSelect={setSelectedKey}
+                monthDate={viewMonthDate}
+                onMonthChange={(next) => {
+                  setViewMonthDate(next);
+                  setSelectedKey(toDateKey(new Date(next.getFullYear(), next.getMonth(), 1)));
+                }}
+                dayData={dayData}
+                todayKey={todayKey}
+              />
+            </FadeInView>
+            <View style={styles.toolbar}>
+              <PressScale onPress={jumpToToday} accessibilityLabel="Jump to today" style={styles.todayPill}>
+                <Text variant="body" color={colors.primary}>
+                  Today
+                </Text>
+              </PressScale>
+              <PressScale onPress={openExport} accessibilityLabel="Export this month" style={styles.exportPill}>
+                <Text variant="body" color={colors.primary}>
+                  Export
+                </Text>
+              </PressScale>
+            </View>
+            <FadeInView delay={140}>
+              <Card style={styles.monthSummary}>
+                <Text variant="bodyStrong" color={colors.primary}>
+                  {formatMonthYear(viewMonthDate)}
+                </Text>
+                <View style={styles.monthRow}>
+                  <View style={styles.monthStat}>
+                    <Text variant="huge">{formatLitres(monthQuantity)}</Text>
+                    <Text variant="caption" color={colors.textMuted}>
+                      milk this month
+                    </Text>
+                  </View>
+                  <View style={styles.monthStat}>
+                    <Text variant="huge" color={colors.primary}>
+                      {formatRupees(monthAmount)}
+                    </Text>
+                    <Text variant="caption" color={colors.textMuted}>
+                      spent this month
+                    </Text>
+                  </View>
+                </View>
+                <Text variant="small" color={colors.textSoft}>
+                  {dayData.size} active {dayData.size === 1 ? 'day' : 'days'} · {records.data?.length ?? 0} entr
+                  {records.data?.length === 1 ? 'y' : 'ies'}
+                </Text>
+              </Card>
+            </FadeInView>
+          </View>
+
+          <View style={styles.desktopRight}>
+            {records.error ? (
+              <ErrorView message={records.error} onRetry={records.refetch} />
+            ) : (
+              <FadeInView delay={80}>
+                <DayDetailCard
+                  selectedKey={selectedKey}
+                  dayRecords={dayRecords}
+                  isToday={selectedKey === todayKey}
+                  onEdit={onEdit}
+                  onAddForDay={onAddForDay}
+                />
+              </FadeInView>
+            )}
+          </View>
+        </View>
+
+        <ExportSheet visible={exportVisible} period={period} onClose={() => setExportVisible(false)} />
       </Screen>
     );
   }
@@ -201,6 +285,21 @@ const styles = StyleSheet.create({
   scroll: {
     gap: spacing.lg,
     paddingBottom: spacing.xxxl,
+  },
+  desktopGrid: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    alignItems: 'flex-start',
+    paddingBottom: spacing.xxxl,
+  },
+  desktopLeft: {
+    flex: 1,
+    gap: spacing.lg,
+    maxWidth: 480,
+  },
+  desktopRight: {
+    flex: 1,
+    minWidth: 0,
   },
   toolbar: {
     flexDirection: 'row',

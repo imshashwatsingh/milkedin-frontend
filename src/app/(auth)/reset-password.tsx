@@ -67,7 +67,7 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <Screen title="Choose a new password" subtitle="Enter the code we emailed you" scroll contentStyle={{ paddingTop: spacing.xxl }}>
+    <Screen title="Choose a new password" subtitle="Enter the code we emailed you" scroll maxWidth="narrow" contentStyle={{ paddingTop: spacing.xxl }}>
       <View style={styles.stack}>
         <BrandHeader tagline="Almost back in" />
         <Card style={styles.card}>

@@ -80,7 +80,7 @@ export default function UpdateProfileScreen() {
   }, [name, email, newPassword, currentPassword, nameChanged, emailChanged, validateForm, updateProfile]);
 
   return (
-    <Screen>
+    <Screen maxWidth="narrow">
       <BackHeader onBack={() => router.back()} title="Edit Profile" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.stack}>

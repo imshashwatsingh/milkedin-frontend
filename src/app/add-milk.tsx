@@ -93,6 +93,7 @@ export default function AddMilkScreen() {
   return (
     <Screen
       title="Add Milk"
+      maxWidth="narrow"
       subtitle={isSpecificDay ? `Recording for ${toDateKey(initialDate)}` : "It's quick — a couple of taps."}>
       <View style={styles.stack}>
         <MilkForm

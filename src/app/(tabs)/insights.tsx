@@ -5,6 +5,7 @@ import type { Period, PeriodType } from '@/services/api/export';
 import { fetchPeriodRecords } from '@/services/api/export';
 import { computeAnalytics } from '@/utils/analytics';
 import { useApiData } from '@/hooks/useApiData';
+import { useResponsive } from '@/hooks/useResponsive';
 import { colors, radii, spacing } from '@/theme';
 import { formatDateLong, parseDateKey } from '@/utils/date';
 import { formatLitres, formatRupees, toNumber } from '@/utils/format';
@@ -64,6 +65,7 @@ export default function InsightsScreen() {
   const [type, setType] = useState<PeriodType>('month');
   const [period, setPeriod] = useState<Period>(() => currentPeriod('month'));
   const [exportVisible, setExportVisible] = useState(false);
+  const { isDesktop } = useResponsive();
 
   const data = useApiData(
     useCallback(() => fetchPeriodRecords(period), [period.type, period.value]),
@@ -158,7 +160,7 @@ export default function InsightsScreen() {
         ) : (
           <>
             <FadeInView delay={0}>
-              <View style={styles.statGrid}>
+              <View style={[styles.statGrid, isDesktop && styles.statGridDesktop]}>
                 <StatTile
                   icon="water"
                   label="Total milk"
@@ -190,78 +192,84 @@ export default function InsightsScreen() {
               </View>
             </FadeInView>
 
-            <FadeInView delay={80}>
-              <Card style={styles.streakCard}>
-                <View style={styles.streakRow}>
-                  <View style={styles.streakItem}>
-                    <Text variant="huge" color={colors.primary}>
-                      {analytics.currentStreak}
+            <View style={isDesktop ? styles.desktopTwoCol : undefined}>
+              <View style={isDesktop ? styles.desktopCol : undefined}>
+                <FadeInView delay={80}>
+                  <Card style={styles.streakCard}>
+                    <View style={styles.streakRow}>
+                      <View style={styles.streakItem}>
+                        <Text variant="huge" color={colors.primary}>
+                          {analytics.currentStreak}
+                        </Text>
+                        <Text variant="caption" color={colors.textMuted}>
+                          day streak
+                        </Text>
+                      </View>
+                      <View style={styles.streakDivider} />
+                      <View style={styles.streakItem}>
+                        <Text variant="huge">{analytics.longestStreak}</Text>
+                        <Text variant="caption" color={colors.textMuted}>
+                          longest streak
+                        </Text>
+                      </View>
+                      <View style={styles.streakDivider} />
+                      <View style={styles.streakItem}>
+                        <Text variant="huge">{analytics.bestDay ? formatLitres(analytics.bestDay.quantity) : '—'}</Text>
+                        <Text variant="caption" color={colors.textMuted}>
+                          best day
+                        </Text>
+                      </View>
+                    </View>
+                    {analytics.bestDay ? (
+                      <Text variant="small" color={colors.textSoft} center>
+                        Best day: {formatDateLong(parseDateKey(analytics.bestDay.dateKey))}
+                      </Text>
+                    ) : null}
+                  </Card>
+                </FadeInView>
+
+                <FadeInView delay={140}>
+                  <Card style={styles.section}>
+                    <Text variant="sectionTitle">
+                      {period.type === 'month' ? 'Milk per day' : 'Milk per month'}
+                    </Text>
+                    <VerticalBars
+                      items={trendItems}
+                      emptyLabel={`No milk logged in ${period.label}`}
+                    />
+                  </Card>
+                </FadeInView>
+              </View>
+
+              <View style={isDesktop ? styles.desktopCol : undefined}>
+                <FadeInView delay={200}>
+                  <Card style={styles.section}>
+                    <Text variant="sectionTitle">Spending by milk type</Text>
+                    {categoryItems.length > 0 ? (
+                      <HorizontalBars items={categoryItems} />
+                    ) : (
+                      <Text variant="body" color={colors.textMuted} center>
+                        No spending to show yet.
+                      </Text>
+                    )}
+                  </Card>
+                </FadeInView>
+
+                <PressScale
+                  onPress={() => setExportVisible(true)}
+                  accessibilityLabel="Export this period"
+                  scale={0.98}>
+                  <Card style={styles.exportCard}>
+                    <Text variant="bodyStrong" color={colors.primary}>
+                      Export {period.label}
                     </Text>
                     <Text variant="caption" color={colors.textMuted}>
-                      day streak
+                      Download as PDF or Excel
                     </Text>
-                  </View>
-                  <View style={styles.streakDivider} />
-                  <View style={styles.streakItem}>
-                    <Text variant="huge">{analytics.longestStreak}</Text>
-                    <Text variant="caption" color={colors.textMuted}>
-                      longest streak
-                    </Text>
-                  </View>
-                  <View style={styles.streakDivider} />
-                  <View style={styles.streakItem}>
-                    <Text variant="huge">{analytics.bestDay ? formatLitres(analytics.bestDay.quantity) : '—'}</Text>
-                    <Text variant="caption" color={colors.textMuted}>
-                      best day
-                    </Text>
-                  </View>
-                </View>
-                {analytics.bestDay ? (
-                  <Text variant="small" color={colors.textSoft} center>
-                    Best day: {formatDateLong(parseDateKey(analytics.bestDay.dateKey))}
-                  </Text>
-                ) : null}
-              </Card>
-            </FadeInView>
-
-            <FadeInView delay={140}>
-              <Card style={styles.section}>
-                <Text variant="sectionTitle">
-                  {period.type === 'month' ? 'Milk per day' : 'Milk per month'}
-                </Text>
-                <VerticalBars
-                  items={trendItems}
-                  emptyLabel={`No milk logged in ${period.label}`}
-                />
-              </Card>
-            </FadeInView>
-
-            <FadeInView delay={200}>
-              <Card style={styles.section}>
-                <Text variant="sectionTitle">Spending by milk type</Text>
-                {categoryItems.length > 0 ? (
-                  <HorizontalBars items={categoryItems} />
-                ) : (
-                  <Text variant="body" color={colors.textMuted} center>
-                    No spending to show yet.
-                  </Text>
-                )}
-              </Card>
-            </FadeInView>
-
-            <PressScale
-              onPress={() => setExportVisible(true)}
-              accessibilityLabel="Export this period"
-              scale={0.98}>
-              <Card style={styles.exportCard}>
-                <Text variant="bodyStrong" color={colors.primary}>
-                  Export {period.label}
-                </Text>
-                <Text variant="caption" color={colors.textMuted}>
-                  Download as PDF or Excel
-                </Text>
-              </Card>
-            </PressScale>
+                  </Card>
+                </PressScale>
+              </View>
+            </View>
           </>
         )}
       </ScrollView>
@@ -282,6 +290,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     padding: 4,
     gap: 4,
+    maxWidth: 380,
+    alignSelf: 'stretch',
   },
   togglePill: {
     flex: 1,
@@ -303,6 +313,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
+  },
+  statGridDesktop: {
+    gap: spacing.lg,
+  },
+  desktopTwoCol: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    alignItems: 'flex-start',
+  },
+  desktopCol: {
+    flex: 1,
+    gap: spacing.lg,
   },
   streakCard: {
     borderWidth: 0,

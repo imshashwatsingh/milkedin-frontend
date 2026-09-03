@@ -1,26 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router/js-tabs';
+import { Platform, StyleSheet, View } from 'react-native';
 
+import { WebSidebar } from '@/components/layout/WebSidebar';
+import { useResponsive } from '@/hooks/useResponsive';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
-  return (
+  const { isDesktop } = useResponsive();
+
+  const tabs = (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
-        tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopWidth: 0,
-          elevation: 8,
-          shadowColor: '#0B1220',
-          shadowOffset: { width: 0, height: -6 },
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          paddingTop: 8,
-        },
+        tabBarStyle: isDesktop
+          ? { display: 'none' }
+          : {
+              backgroundColor: colors.tabBar,
+              borderTopWidth: 0,
+              elevation: 8,
+              shadowColor: '#0B1220',
+              shadowOffset: { width: 0, height: -6 },
+              shadowOpacity: 0.08,
+              shadowRadius: 16,
+              paddingTop: 8,
+            },
       }}>
       <Tabs.Screen
         name="index"
@@ -59,4 +66,27 @@ export default function TabsLayout() {
       />
     </Tabs>
   );
+
+  if (isDesktop && Platform.OS === 'web') {
+    return (
+      <View style={styles.webShell}>
+        <WebSidebar />
+        <View style={styles.webContent}>{tabs}</View>
+      </View>
+    );
+  }
+
+  return tabs;
 }
+
+const styles = StyleSheet.create({
+  webShell: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+  },
+  webContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+});

@@ -61,7 +61,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <Screen title="Create your account" subtitle="You only need to do this once" scroll contentStyle={{ paddingTop: spacing.xxl }}>
+    <Screen title="Create your account" subtitle="You only need to do this once" scroll maxWidth="narrow" contentStyle={{ paddingTop: spacing.xxl }}>
       <View style={styles.stack}>
         <BrandHeader tagline="Your daily milk tracker" />
         <Card style={styles.card}>

@@ -45,7 +45,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen title="Welcome back" subtitle="Sign in to see today's milk" scroll contentStyle={{ paddingTop: spacing.xxl }}>
+    <Screen title="Welcome back" subtitle="Sign in to see today's milk" scroll maxWidth="narrow" contentStyle={{ paddingTop: spacing.xxl }}>
       <View style={styles.stack}>
         <BrandHeader />
         <SignInFields
