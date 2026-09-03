@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text as RNText, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text as RNText, View } from 'react-native';
 
-import { colors, radii, spacing } from '@/theme';
-import { formatLitres, toNumber } from '@/utils/format';
+import { colors, radii, shadows, spacing } from '@/theme';
 import { formatMonthYear, toDateKey } from '@/utils/date';
 
 export interface DayMilkInfo {
@@ -13,32 +12,29 @@ export interface DayMilkInfo {
 }
 
 interface CalendarProps {
-  /** Currently selected day as YYYY-MM-DD. */
   selectedKey: string;
   onSelect: (key: string) => void;
-  /** The month currently displayed (any date within it). */
   monthDate: Date;
   onMonthChange?: (next: Date) => void;
-  /** Map of YYYY-MM-DD -> milk info, used to mark days with entries. */
   dayData: Map<string, DayMilkInfo>;
   todayKey: string;
 }
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
-
 function addMonths(date: Date, delta: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + delta, 1);
 }
 
-/**
- * A self-contained month calendar. Shows which days have milk entries via a
- * tinted dot and the litres bought, highlights today, and animates the
- * selected day. Pure presentational: the parent owns the selected day.
- */
+function formatQuantityShort(q: number): string {
+  // Compact: 0.5 → "0.5L", 2 → "2L", 2.5 → "2.5L"
+  const trimmed = Number(q.toFixed(2));
+  return `${trimmed}L`;
+}
+
 export function Calendar({ selectedKey, onSelect, monthDate, onMonthChange, dayData, todayKey }: CalendarProps) {
   const [visibleMonth, setVisibleMonth] = useState<Date>(startOfMonth(monthDate));
 
@@ -57,6 +53,12 @@ export function Calendar({ selectedKey, onSelect, monthDate, onMonthChange, dayD
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
   while (cells.length % 7 !== 0) cells.push(null);
 
+  const maxQuantity = useMemo(() => {
+    let max = 0;
+    for (const v of dayData.values()) if (v.quantity > max) max = v.quantity;
+    return max || 1;
+  }, [dayData]);
+
   const goPrev = () => {
     const next = addMonths(visibleMonth, -1);
     setVisibleMonth(next);
@@ -68,36 +70,63 @@ export function Calendar({ selectedKey, onSelect, monthDate, onMonthChange, dayD
     onMonthChange?.(next);
   };
 
+  const loggedDays = dayData.size;
+  const totalLitresThisMonth = useMemo(() => {
+    let sum = 0;
+    for (const v of dayData.values()) sum += v.quantity;
+    return sum;
+  }, [dayData]);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, shadows.sm]}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <Pressable
           accessibilityRole="button"
           accessibilityLabel="Previous month"
           onPress={goPrev}
           hitSlop={10}
-          style={styles.navButton}>
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <RNText style={styles.monthLabel}>{formatMonthYear(visibleMonth)}</RNText>
-        <TouchableOpacity
+          style={({ pressed, hovered }: any) => [
+            styles.navButton,
+            pressed && styles.navButtonPressed,
+            hovered && styles.navButtonHovered,
+          ]}>
+          <Ionicons name="chevron-back" size={18} color={colors.text} />
+        </Pressable>
+
+        <View style={styles.monthTitleWrap}>
+          <RNText style={styles.monthLabel}>{formatMonthYear(visibleMonth)}</RNText>
+          <RNText style={styles.monthSub}>
+            {loggedDays > 0 ? `${loggedDays} ${loggedDays === 1 ? 'day' : 'days'} · ${formatQuantityShort(totalLitresThisMonth)}` : 'No entries yet'}
+          </RNText>
+        </View>
+
+        <Pressable
           accessibilityRole="button"
           accessibilityLabel="Next month"
           onPress={goNext}
           hitSlop={10}
-          style={styles.navButton}>
-          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-        </TouchableOpacity>
+          style={({ pressed, hovered }: any) => [
+            styles.navButton,
+            pressed && styles.navButtonPressed,
+            hovered && styles.navButtonHovered,
+          ]}>
+          <Ionicons name="chevron-forward" size={18} color={colors.text} />
+        </Pressable>
       </View>
 
+      {/* Weekday header */}
       <View style={styles.weekRow}>
         {WEEKDAYS.map((w, i) => (
-          <View key={i} style={styles.weekCell}>
-            <RNText style={styles.weekText}>{w}</RNText>
+          <View key={w + i} style={styles.weekCell}>
+            <RNText style={[styles.weekText, (i === 0 || i === 6) && styles.weekTextWeekend]}>{w}</RNText>
           </View>
         ))}
       </View>
 
+      <View style={styles.divider} />
+
+      {/* Grid */}
       <View style={styles.grid}>
         {cells.map((date, index) => {
           if (!date) return <View key={`empty-${index}`} style={styles.cell} />;
@@ -105,90 +134,123 @@ export function Calendar({ selectedKey, onSelect, monthDate, onMonthChange, dayD
           const info = dayData.get(key);
           const isSelected = key === selectedKey;
           const isToday = key === todayKey;
-          const inMonth = date.getMonth() === month;
+          const hasData = !!info && info.count > 0;
+          const intensity = hasData ? Math.min(1, info!.quantity / maxQuantity) : 0;
           return (
             <DayCell
               key={key}
-              keyText={String(date.getDate())}
+              date={date}
               info={info}
+              intensity={intensity}
               selected={isSelected}
               today={isToday}
-              muted={!inMonth}
+              hasData={hasData}
               onPress={() => onSelect(key)}
             />
           );
         })}
+      </View>
+
+      {/* Legend */}
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendSwatch, styles.legendSwatchEmpty]} />
+          <RNText style={styles.legendText}>No entry</RNText>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendSwatch, styles.legendSwatchLow]} />
+          <RNText style={styles.legendText}>Logged</RNText>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendSwatch, styles.legendSwatchHigh]} />
+          <RNText style={styles.legendText}>More milk</RNText>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={styles.legendDotToday} />
+          <RNText style={styles.legendText}>Today</RNText>
+        </View>
       </View>
     </View>
   );
 }
 
 interface DayCellProps {
-  keyText: string;
+  date: Date;
   info?: DayMilkInfo;
+  intensity: number; // 0..1
   selected: boolean;
   today: boolean;
-  muted: boolean;
+  hasData: boolean;
   onPress: () => void;
 }
 
-function DayCell({ keyText, info, selected, today, muted, onPress }: DayCellProps) {
+function DayCell({ date, info, intensity, selected, today, hasData, onPress }: DayCellProps) {
   const scale = useRef(new Animated.Value(1)).current;
-  const ring = useRef(new Animated.Value(0)).current;
+  const dayNum = String(date.getDate());
 
-  useEffect(() => {
-    Animated.spring(ring, {
-      toValue: selected ? 1 : 0,
-      useNativeDriver: false,
-      tension: 260,
-      friction: 20,
-    }).start();
-  }, [selected, ring]);
+  // Background based on intensity — heatmap style
+  const bgColor = (() => {
+    if (selected) return colors.primary;
+    if (!hasData) return 'transparent';
+    if (intensity < 0.35) return '#EAF1FE';
+    if (intensity < 0.65) return '#D6E4FE';
+    if (intensity < 0.85) return '#BFd2FD';
+    return '#A9C2FD';
+  })();
 
-  const hasData = !!info && info.count > 0;
-  const dotColor = selected ? colors.onPrimary : colors.primary;
+  const textColor = selected ? colors.onPrimary : colors.text;
+  const subTextColor = selected ? 'rgba(255,255,255,0.85)' : intensity > 0.65 ? '#1F3A6B' : colors.textMuted;
+
+  const qtyLabel = hasData ? formatQuantityShort(info!.quantity) : null;
+  const showCountBadge = hasData && info!.count > 1;
 
   return (
-    <TouchableOpacity
+    <Pressable
       accessibilityRole="button"
-      accessibilityLabel={
-        hasData
-          ? `${keyText}${muted ? '' : ''}, ${formatLitres(info?.quantity ?? 0)} recorded`
-          : keyText
-      }
-      onPressIn={() =>
-        Animated.spring(scale, { toValue: 0.9, useNativeDriver: true, tension: 300, friction: 18 }).start()
-      }
-      onPressOut={() =>
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 300, friction: 18 }).start()
-      }
+      accessibilityLabel={hasData ? `${dayNum}, ${qtyLabel} in ${info!.count} ${info!.count === 1 ? 'entry' : 'entries'}` : `${dayNum}`}
+      accessibilityState={{ selected }}
       onPress={onPress}
-      style={styles.cell}>
+      onPressIn={() => Animated.spring(scale, { toValue: 0.92, useNativeDriver: true, tension: 400, friction: 20 }).start()}
+      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 400, friction: 20 }).start()}
+      style={({ pressed, hovered }: any) => [styles.cell, pressed && { opacity: 0.96 }, hovered && !selected && hasData && { opacity: 0.9 }]}>
       <Animated.View
         style={[
           styles.cellInner,
           {
             transform: [{ scale }],
-            backgroundColor: selected ? colors.primary : 'transparent',
-            borderColor: today && !selected ? colors.primary : 'transparent',
-            borderWidth: today && !selected ? 2 : 0,
-            opacity: muted ? 0.35 : 1,
+            backgroundColor: bgColor,
+            borderWidth: today && !selected ? 1.5 : hasData && !selected ? 1 : 0,
+            borderColor: today && !selected ? colors.primary : hasData && !selected ? 'rgba(45,108,223,0.18)' : 'transparent',
+            // selected gets shadow
+            ...(selected ? shadows.sm : {}),
           },
         ]}>
-        <RNText
-          style={[
-            styles.dayText,
-            { color: selected ? colors.onPrimary : muted ? colors.textSoft : colors.text },
-          ]}>
-          {keyText}
-        </RNText>
+        {/* Today pill */}
+        {today && !selected ? (
+          <View style={styles.todayPill}>
+            <RNText style={styles.todayPillText}>TODAY</RNText>
+          </View>
+        ) : null}
+
+        {/* Count badge for multiple entries */}
+        {showCountBadge ? (
+          <View style={[styles.countBadge, selected && styles.countBadgeSelected]}>
+            <RNText style={[styles.countBadgeText, selected && styles.countBadgeTextSelected]}>×{info!.count}</RNText>
+          </View>
+        ) : null}
+
+        <RNText style={[styles.dayText, { color: textColor }, today && !selected && styles.dayTextToday]}>{dayNum}</RNText>
+
         {hasData ? (
-          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+          <View style={[styles.qtyPill, selected ? styles.qtyPillSelected : intensity > 0.65 ? styles.qtyPillHigh : styles.qtyPillLow]}>
+            <Ionicons name="water" size={10} color={selected ? colors.onPrimary : intensity > 0.65 ? '#1F3A6B' : colors.primary} style={styles.qtyIcon} />
+            <RNText style={[styles.qtyText, { color: subTextColor }, selected && styles.qtyTextSelected]}>{qtyLabel}</RNText>
+          </View>
         ) : (
-          <View style={styles.dotPlaceholder} />
+          <View style={styles.qtyPlaceholder} />
         )}
       </Animated.View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -199,61 +261,232 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     padding: spacing.lg,
+    gap: spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    gap: spacing.md,
   },
   navButton: {
-    padding: spacing.xs,
+    width: 36,
+    height: 36,
+    borderRadius: radii.pill,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navButtonPressed: {
+    backgroundColor: colors.surfaceBorder,
+  },
+  navButtonHovered: {
+    backgroundColor: colors.surfaceAlt,
+  } as any,
+  monthTitleWrap: {
+    alignItems: 'center',
+    gap: 2,
+    flex: 1,
   },
   monthLabel: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
+  monthSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSoft,
+    letterSpacing: 0.2,
+    textTransform: 'uppercase' as any,
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
+    paddingTop: spacing.xs,
   },
   weekCell: {
     flex: 1,
     alignItems: 'center',
+    paddingVertical: spacing.xs,
   },
   weekText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textSoft,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as any,
+  },
+  weekTextWeekend: {
+    color: colors.textMuted,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.surfaceBorder,
+    opacity: 0.8,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginHorizontal: -2,
   },
   cell: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
-    padding: 3,
+    aspectRatio: Platform.OS === 'web' ? 0.92 : 0.95,
+    padding: 3.5,
   },
   cellInner: {
     flex: 1,
-    borderRadius: radii.md,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 3,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+    minHeight: 54,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  todayPill: {
+    position: 'absolute',
+    top: 4,
+    alignSelf: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: radii.pill,
+  },
+  todayPillText: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: colors.onPrimary,
+    letterSpacing: 0.5,
+  },
+  countBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: colors.text,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  countBadgeSelected: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  countBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.onPrimary,
+    lineHeight: 10,
+  },
+  countBadgeTextSelected: {
+    color: colors.onPrimary,
   },
   dayText: {
     fontSize: 16,
     fontWeight: '700',
+    lineHeight: 20,
+    letterSpacing: -0.2,
+    marginTop: 2,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  dayTextToday: {
+    fontWeight: '800',
   },
-  dotPlaceholder: {
-    width: 6,
-    height: 6,
+  qtyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+    minHeight: 16,
+  },
+  qtyPillLow: {
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(45,108,223,0.12)',
+  },
+  qtyPillHigh: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(31,58,107,0.12)',
+  },
+  qtyPillSelected: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  qtyIcon: {
+    marginTop: 0.5,
+  },
+  qtyText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    lineHeight: 12,
+  },
+  qtyTextSelected: {
+    color: colors.onPrimary,
+  },
+  qtyPlaceholder: {
+    height: 16,
+    minHeight: 16,
+  },
+  legend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingTop: spacing.sm,
+    flexWrap: 'wrap',
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceBorder,
+    marginTop: spacing.xs,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  legendSwatchEmpty: {
+    backgroundColor: 'transparent',
+    borderColor: colors.surfaceBorder,
+  },
+  legendSwatchLow: {
+    backgroundColor: '#EAF1FE',
+    borderColor: 'rgba(45,108,223,0.18)',
+  },
+  legendSwatchHigh: {
+    backgroundColor: '#A9C2FD',
+    borderColor: 'rgba(31,58,107,0.18)',
+  },
+  legendDotToday: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
+  },
+  legendText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSoft,
+    letterSpacing: 0.2,
   },
 });

@@ -106,3 +106,19 @@ export const typography = {
 export const touchTarget = {
   minHeight: 56,
 } as const;
+
+export const breakpoints = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+} as const;
+
+export const layout = {
+  maxWidth: 1120,
+  maxWidthNarrow: 720,
+  maxWidthWide: 1280,
+  sidebarWidth: 260,
+  contentPaddingMobile: 20,
+  contentPaddingDesktop: 32,
+} as const;

@@ -46,7 +46,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <Screen title="Reset your password" subtitle="We will email you a reset link" scroll contentStyle={{ paddingTop: spacing.xxl }}>
+    <Screen title="Reset your password" subtitle="We will email you a reset link" scroll maxWidth="narrow" contentStyle={{ paddingTop: spacing.xxl }}>
       <View style={styles.stack}>
         <BrandHeader tagline="Back into your milk log in no time" />
         <Card style={styles.card}>

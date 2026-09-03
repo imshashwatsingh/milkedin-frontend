@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, spacing } from '@/theme';
+import { useResponsive } from '@/hooks/useResponsive';
+import { colors, layout, spacing } from '@/theme';
 
 import { Text } from './Text';
 
@@ -14,6 +15,9 @@ interface ScreenProps {
   contentStyle?: ViewStyle;
   /** Applied to the scrollable content wrapper. */
   scrollStyle?: ViewStyle;
+  /** Max width variant: default centers at 1120px, narrow at 720px, wide at 1280px, or custom number */
+  maxWidth?: 'default' | 'narrow' | 'wide' | 'full' | number;
+  centered?: boolean;
   children: React.ReactNode;
 }
 
@@ -25,7 +29,31 @@ interface ScreenProps {
  * navigation bar) and KeyboardAvoidingView (so focused inputs are revealed
  * when the soft keyboard opens).
  */
-export function Screen({ title, subtitle, scroll = true, contentStyle, scrollStyle, children }: ScreenProps) {
+export function Screen({
+  title,
+  subtitle,
+  scroll = true,
+  contentStyle,
+  scrollStyle,
+  maxWidth = 'default',
+  centered = true,
+  children,
+}: ScreenProps) {
+  const { isDesktop, isWeb } = useResponsive();
+
+  const resolvedMaxWidth =
+    maxWidth === 'full'
+      ? undefined
+      : typeof maxWidth === 'number'
+        ? maxWidth
+        : maxWidth === 'narrow'
+          ? layout.maxWidthNarrow
+          : maxWidth === 'wide'
+            ? layout.maxWidthWide
+            : layout.maxWidth;
+
+  const horizontalPadding = isDesktop ? layout.contentPaddingDesktop : spacing.xl;
+
   const header =
     title || subtitle ? (
       <View style={styles.header} accessible accessibilityRole="header">
@@ -38,28 +66,38 @@ export function Screen({ title, subtitle, scroll = true, contentStyle, scrollSty
       </View>
     ) : null;
 
-  const body = scroll ? (
-    <ScrollView
-      style={styles.flex}
-      contentContainerStyle={[styles.scrollContent, scrollStyle]}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled">
-      {children}
-    </ScrollView>
-  ) : (
-    <View style={styles.flex}>{children}</View>
+  const innerContent = (
+    <View
+      style={[
+        styles.container,
+        isWeb && centered && resolvedMaxWidth
+          ? { maxWidth: resolvedMaxWidth, width: '100%', alignSelf: 'center' }
+          : null,
+        { paddingHorizontal: horizontalPadding },
+        contentStyle,
+      ]}>
+      {header}
+      {scroll ? (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[styles.scrollContent, scrollStyle]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={styles.flex}>{children}</View>
+      )}
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : isWeb ? undefined : 'height'}
         keyboardVerticalOffset={0}>
-        <View style={[styles.container, contentStyle]}>
-          {header}
-          {body}
-        </View>
+        {innerContent}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -99,7 +137,6 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: spacing.xl,
   },
   flex: {
     flex: 1,

@@ -42,6 +42,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 150,
     gap: spacing.xs,
+    // On web, ensure tiles stretch but don't get too wide before wrapping
+    // flexBasis helps responsive grid
   },
   iconCircle: {
     width: 42,

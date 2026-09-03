@@ -114,7 +114,7 @@ export default function AIScreen() {
   }, [handleSend, input]);
 
   return (
-    <Screen title="MilkEdin AI" subtitle="Your personal milk assistant" scroll={false}>
+    <Screen title="MilkEdin AI" subtitle="Your personal milk assistant" scroll={false} maxWidth="narrow">
       <View style={styles.wrapper}>
         {messages.length > 0 ? (
           <View style={styles.clearBar}>
@@ -572,6 +572,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     maxWidth: 420,
     width: '100%',
+    // @ts-ignore web grid for desktop
+    ...(Platform.OS === 'web'
+      ? {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+        }
+      : {}),
   },
   suggestionChip: {
     backgroundColor: colors.surface,

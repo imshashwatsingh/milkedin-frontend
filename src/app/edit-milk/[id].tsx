@@ -128,7 +128,7 @@ export default function EditMilkScreen() {
 
   return (
     <>
-      <Screen>
+      <Screen maxWidth="narrow">
         <View style={styles.stack}>
           <MilkForm
             mode="edit"
