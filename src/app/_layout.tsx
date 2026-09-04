@@ -43,6 +43,7 @@ function RootNavigator() {
           animation: "fade",
         }}
       >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Protected guard={!!user}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
