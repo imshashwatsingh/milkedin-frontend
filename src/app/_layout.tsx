@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "@/auth/AuthContext";
 import { Text } from "@/components/ui/Text";
 import { colors } from "@/theme";
 import { navTheme } from "@/theme/navigation";
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,7 +33,7 @@ function RootNavigator() {
   }
 
   return (
-    <Analytics>
+    <>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -61,7 +61,9 @@ function RootNavigator() {
           <Stack.Screen name="(auth)" />
         </Stack.Protected>
       </Stack>
-    </Analytics>
+      {/* Vercel Web Analytics - only injected on web, no-op on native */}
+      <Analytics />
+    </>
   );
 }
 
