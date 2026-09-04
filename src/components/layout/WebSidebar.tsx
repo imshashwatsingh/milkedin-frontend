@@ -117,6 +117,12 @@ export function WebSidebar() {
             Tip: Press dates in History to quickly jump between days.
           </Text>
         </View>
+        <View>
+            <Text variant="caption" color={colors.textMuted} center>
+              Developed by Shashwat Singh with ❤️ for Meenakshi
+            </Text>
+          </View>
+          <View/>
         <Text variant="small" color={colors.textSoft} center>
           © {new Date().getFullYear()} milkedIn
         </Text>
