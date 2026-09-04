@@ -1,14 +1,15 @@
-import { Stack, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Stack, ThemeProvider } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { AuthProvider, useAuth } from '@/auth/AuthContext';
-import { Text } from '@/components/ui/Text';
-import { colors } from '@/theme';
-import { navTheme } from '@/theme/navigation';
+import { AuthProvider, useAuth } from "@/auth/AuthContext";
+import { Text } from "@/components/ui/Text";
+import { colors } from "@/theme";
+import { navTheme } from "@/theme/navigation";
+import { Analytics } from "@vercel/analytics/react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,23 +33,37 @@ function RootNavigator() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
-        animation: 'fade',
-      }}>
-      <Stack.Protected guard={!!user}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="add-milk" options={{ presentation: 'card', gestureEnabled: false }} />
-        <Stack.Screen name="edit-milk/[id]" options={{ presentation: 'card', gestureEnabled: false }} />
-        <Stack.Screen name="update-profile" options={{ presentation: 'card', gestureEnabled: true }} />
-      </Stack.Protected>
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+          animation: "fade",
+        }}
+      >
+        <Stack.Protected guard={!!user}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="add-milk"
+            options={{ presentation: "card", gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="edit-milk/[id]"
+            options={{ presentation: "card", gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="update-profile"
+            options={{ presentation: "card", gestureEnabled: true }}
+          />
+        </Stack.Protected>
 
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={!user}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
+      </Stack>
+      {/* Vercel Web Analytics - only injected on web, no-op on native */}
+      <Analytics />
+    </>
   );
 }
 
@@ -68,8 +83,8 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.background,
     paddingHorizontal: 40,
   },
