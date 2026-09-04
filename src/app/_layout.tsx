@@ -2,14 +2,14 @@ import { Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
-import { Text } from "@/components/ui/Text";
 import { colors } from "@/theme";
 import { navTheme } from "@/theme/navigation";
 import { Analytics } from "@vercel/analytics/react";
+import { SplashScreenView } from "@/components/ui/AppSplash";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,19 +17,21 @@ function RootNavigator() {
   const { user, initializing } = useAuth();
 
   useEffect(() => {
-    if (!initializing) void SplashScreen.hideAsync();
+    if (!initializing) {
+      // Small delay so the branded splash is visible and the transition feels deliberate
+      const t = setTimeout(() => {
+        void SplashScreen.hideAsync().catch(() => {});
+      }, 900);
+      return () => clearTimeout(t);
+    } else {
+      // Hide native splash as soon as JS takes over, we show the JS splash instead
+      void SplashScreen.hideAsync().catch(() => {});
+    }
   }, [initializing]);
 
   if (initializing) {
-    // Keep the native splash visible until the persisted session is restored,
-    // so a signed-in user never sees the login screen flash.
-    return (
-      <View style={styles.loading} testID="auth-restoring">
-        <Text variant="small" color={colors.textMuted} center>
-          Getting ready...
-        </Text>
-      </View>
-    );
+    // Branded splash while we restore the persisted session — logo + app-name + heart line
+    return <SplashScreenView />;
   }
 
   return (
