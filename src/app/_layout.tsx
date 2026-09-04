@@ -8,7 +8,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/auth/AuthContext";
 import { colors } from "@/theme";
 import { navTheme } from "@/theme/navigation";
-import { Analytics } from "@vercel/analytics/react";
 import { SplashScreenView } from "@/components/ui/AppSplash";
 
 SplashScreen.preventAutoHideAsync();
@@ -65,7 +64,6 @@ function RootNavigator() {
         </Stack.Protected>
       </Stack>
       {/* Vercel Web Analytics - only injected on web, no-op on native */}
-      <Analytics />
     </>
   );
 }
