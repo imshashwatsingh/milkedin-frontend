@@ -1,12 +1,23 @@
 name: Android APK Build
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [closed]
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Android APK
+    # Only run on PRs that were actually merged, or on direct pushes / manual
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed for creating GitHub Releases
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,14 +27,69 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Build Android APK (preview)
-        run: eas build -p android --profile preview --non-interactive
+      # ── Cloud build (Expo hosted) ─────────────────────────────────────
+      # This gives you a shareable EAS build link + handles signing/keystore
+      # via Expo. The APK is downloadable from expo.dev (Builds dashboard).
+      # Requires EXPO_TOKEN secret (expo.dev → Account → Access Tokens).
+      - name: Build Android APK (EAS Cloud — preview)
+        if: env.EXPO_TOKEN != ''
+        run: eas build -p android --profile preview --non-interactive --wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      # ── Local build (runner) — makes a downloadable .apk artifact ───────
+      # This builds the APK directly on the GitHub runner so it can be
+      # downloaded from the Actions tab (Artifacts) and attached to a Release.
+      # Uses the debug keystore (no signing setup needed for internal preview).
+      # If you have EAS credentials configured, the cloud build above is still
+      # preferred for store uploads.
+      - name: Prebuild Android project (Expo → native)
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build APK locally (Gradle)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -x bundleReleaseJsAndAssets || ./gradlew assembleDebug --no-daemon
+          ls -lh app/build/outputs/apk/*/*/*.apk || ls -lh app/build/outputs/apk/**/*.apk || true
+
+      - name: Upload APK as workflow artifact (downloadable from Actions tab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: milkedin-apk-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Create / Update GitHub Release with APK (tag = build-${{ github.sha }})
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.sha }}
+          name: Build ${{ github.sha }}
+          generate_release_notes: true
+          files: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

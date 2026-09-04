@@ -10,7 +10,16 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "cache": {
+        "disabled": true
+      },
+      "env": {
+        "EAS_BUILD_MAVEN_CACHE_DISABLED": "1"
+      }
     },
     "production": {
       "autoIncrement": true
