@@ -17,9 +17,10 @@ A cross-platform **React Native (Expo)** app for **milkedIn** — tracking daily
 - [State & Authentication](#state--authentication)
 - [API Client](#api-client)
 - [AI Assistant](#ai-assistant)
-- [Theming & Design System](#theming--design-system)
-- [Exporting Data](#exporting-data)
-- [Setup & Installation](#setup--installation)
+  - [Theming & Design System](#theming--design-system)
+  - [Branding, Icon & Splash Screen](#branding-icon--splash-screen)
+  - [Exporting Data](#exporting-data)
+  - [Setup & Installation](#setup--installation)
 - [Environment Variables](#environment-variables)
 - [Running the App](#running-the-app)
 - [Build & Deploy](#build--deploy)
@@ -198,6 +199,30 @@ Reusable primitives in `src/components/ui` (Button, Card, Field, Banner, Screen,
 
 - **Responsive Web Shell** (`src/components/layout/WebSidebar.tsx` + `src/hooks/useResponsive.ts` + `src/components/ui/Screen.tsx`): `WebSidebar` (260px, sticky, channel-aware) on `web ≥1024px`; bottom tabs on mobile. `Screen` gains `maxWidth` (`default 1120 / narrow 720 / wide 1280`), centered `alignSelf: center`, and adaptive padding (`xl` → `32` on desktop). Kept 100% backward compatible — mobile layout untouched.
 - **Modern Calendar** (`src/components/calendar/Calendar.tsx`): replaces the dot-only day with **heatmap intensity** (`primarySoft` → `#A9C2FD` by `quantity/max`), **quantity pill** (`water` + `"2L"`), **count badge** (`×N` for multiple entries), **TODAY** pill, and a 4-item **legend** (No entry / Logged / More milk / Today). Responsive (`0.92` aspect on web) and wrapped in `shadows.sm`.
+
+---
+
+## Branding, Icon & Splash Screen
+
+**milkedIn** ships a fully consistent brand kit generated from a single milk-drop vector — no mixed Expo defaults.
+
+| Asset | Path | Size | Usage |
+|-------|------|------|-------|
+| App icon | `assets/images/icon.png` | `1024×1024` white bg, blue `#2D6CDF` circle `680px` + white milk droplet + gloss | `app.json:10` `expo.icon` + `ios.icon` |
+| Favicon | `assets/images/favicon.png` | `48×48` (also `favicon-{32,64,192,512}.png`) same droplet scaled `0.66×` | `app.json:31` `web.favicon` + `dist/favicon.ico` |
+| Splash (native) | `assets/images/splash-icon.png` | `1024×1024` white bg, `620px` circle | `app.json:38` `expo-splash-screen` `image` (`imageWidth:200`, `backgroundColor:#F4F6F9`) |
+| Android adaptive | `android-icon-foreground.png` transparent `640px` + `android-icon-background.png` white + `android-icon-monochrome.png` white circle | `1024×1024` | `app.json:20` `android.adaptiveIcon` |
+| JS splash logo | `assets/images/logo-glow.png` | `1024×1024` transparent glow `22%` primary + droplet | `src/components/ui/AppSplash.tsx:16` |
+| Full preview | `assets/images/splash-full.png` | `1284×2778` `#F4F6F9` bg, logo + app-name + heart line baked | Preview only |
+
+**Splash flow** `src/app/_layout.tsx:12` + `src/components/ui/AppSplash.tsx:1`:
+1. Native splash (Expo `splash-icon.png` on `#F4F6F9`) shows before JS.
+2. JS takes over (`SplashScreen.preventAutoHideAsync()`), shows **`SplashScreenView`** while `AuthContext` restores session (`initializing`).
+3. Center column: `140×140` `surface` card with `logo-glow.png` `120×120`, `huge` `milkedIn` in `primary`, `body` `daily milk tracker` in `textMuted` (animated `scale 0.92→1` + `opacity`).
+4. Bottom pinned: `Developed with ♥ by Shashwat Singh for Meenakshi` (`danger` heart `♥` `16px`, `textMuted` + `textSoft` sub `milkdin • v1.0`), `paddingBottom:40`.
+5. After `initializing` finishes, hide native splash after `900ms` delay for a deliberate reveal; no `Getting ready…` flash.
+
+Regenerate: `py assets/generate` script (`gen_assets.py` uses `PIL` with `primary #2D6CDF`, white droplet via ellipse+polygon) → outputs all of the above. To tweak colors, edit `PRIMARY` in the script and re-run.
 
 ---
 
