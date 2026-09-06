@@ -194,7 +194,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <Screen title="History" subtitle="Tap a day to see what you bought">
+    <Screen title="History" subtitle="Tap a day to see what you bought" scroll={false}>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={false} onRefresh={() => {

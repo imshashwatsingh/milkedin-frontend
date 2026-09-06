@@ -1,4 +1,4 @@
-import { StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { Platform, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 
 import { colors, radii, spacing, typography } from '@/theme';
 
@@ -48,7 +48,12 @@ export function Field({
         {label}
       </Text>
       <TextInput
-        style={[styles.input, error ? styles.inputError : null, !editable && styles.inputDisabled]}
+        style={[
+          styles.input,
+          Platform.OS === 'android' && styles.inputAndroid,
+          error ? styles.inputError : null,
+          !editable && styles.inputDisabled,
+        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -65,6 +70,7 @@ export function Field({
         onEndEditing={onSubmit}
         returnKeyType="done"
         selectionColor={colors.primary}
+        textAlignVertical={Platform.OS === 'android' ? 'center' : undefined}
       />
       {hint && !error ? (
         <Text variant="small" color={colors.textMuted}>
@@ -98,6 +104,13 @@ const styles = StyleSheet.create({
     fontSize: typography.body.fontSize,
     lineHeight: typography.body.lineHeight,
     color: colors.text,
+  },
+  inputAndroid: {
+    // Android clips lineHeight 27 with paddingVertical 8 → text cropped top
+    lineHeight: undefined,
+    paddingVertical: spacing.sm,
+    textAlignVertical: 'center' as const,
+    includeFontPadding: false as any,
   },
   inputError: {
     borderColor: colors.danger,

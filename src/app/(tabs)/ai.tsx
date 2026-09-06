@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     color: colors.text,
-    textAlignVertical: 'center',
+    textAlignVertical: Platform.OS === 'android' ? 'top' : 'center',
   },
   sendButton: {
     width: 56,

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useResponsive } from '@/hooks/useResponsive';
@@ -92,10 +92,10 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={Platform.OS === 'android' ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : isWeb ? undefined : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}>
         {innerContent}
       </KeyboardAvoidingView>
@@ -113,15 +113,15 @@ interface BackHeaderProps {
 export function BackHeader({ onBack, title, rightSlot }: BackHeaderProps) {
   return (
     <View style={styles.backHeader}>
-      <Ionicons
-        name="chevron-back"
-        size={32}
-        color={colors.primary}
+      <Pressable
         onPress={onBack}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        android_ripple={{ color: 'rgba(45,108,223,0.12)', borderless: true }}
         accessibilityRole="button"
         accessibilityLabel="Go back"
-      />
+        style={styles.backPressable}>
+        <Ionicons name="chevron-back" size={32} color={colors.primary} />
+      </Pressable>
       <Text variant="sectionTitle" style={styles.backTitle} numberOfLines={1}>
         {title}
       </Text>
@@ -157,6 +157,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
     gap: spacing.sm,
+  },
+  backPressable: {
+    borderRadius: 16,
+    padding: 2,
   },
   backTitle: {
     flex: 1,

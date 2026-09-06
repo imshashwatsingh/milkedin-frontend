@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text as RNText, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text as RNText, View } from 'react-native';
 
 import { colors, radii, shadows, spacing } from '@/theme';
 import { formatMonthYear, toDateKey } from '@/utils/date';
@@ -85,12 +85,8 @@ export function Calendar({ selectedKey, onSelect, monthDate, onMonthChange, dayD
           accessibilityRole="button"
           accessibilityLabel="Previous month"
           onPress={goPrev}
-          hitSlop={10}
-          style={({ pressed, hovered }: any) => [
-            styles.navButton,
-            pressed && styles.navButtonPressed,
-            hovered && styles.navButtonHovered,
-          ]}>
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={({ pressed }: any) => [styles.navButton, pressed && styles.navButtonPressed]}>
           <Ionicons name="chevron-back" size={18} color={colors.text} />
         </Pressable>
 
@@ -105,12 +101,8 @@ export function Calendar({ selectedKey, onSelect, monthDate, onMonthChange, dayD
           accessibilityRole="button"
           accessibilityLabel="Next month"
           onPress={goNext}
-          hitSlop={10}
-          style={({ pressed, hovered }: any) => [
-            styles.navButton,
-            pressed && styles.navButtonPressed,
-            hovered && styles.navButtonHovered,
-          ]}>
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={({ pressed }: any) => [styles.navButton, pressed && styles.navButtonPressed]}>
           <Ionicons name="chevron-forward" size={18} color={colors.text} />
         </Pressable>
       </View>
@@ -212,7 +204,7 @@ function DayCell({ date, info, intensity, selected, today, hasData, onPress }: D
       onPress={onPress}
       onPressIn={() => Animated.spring(scale, { toValue: 0.92, useNativeDriver: true, tension: 400, friction: 20 }).start()}
       onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 400, friction: 20 }).start()}
-      style={({ pressed, hovered }: any) => [styles.cell, pressed && { opacity: 0.96 }, hovered && !selected && hasData && { opacity: 0.9 }]}>
+      style={({ pressed }: any) => [styles.cell, pressed && { opacity: 0.96 }]}>
       <Animated.View
         style={[
           styles.cellInner,
@@ -221,14 +213,16 @@ function DayCell({ date, info, intensity, selected, today, hasData, onPress }: D
             backgroundColor: bgColor,
             borderWidth: today && !selected ? 1.5 : hasData && !selected ? 1 : 0,
             borderColor: today && !selected ? colors.primary : hasData && !selected ? 'rgba(45,108,223,0.18)' : 'transparent',
-            // selected gets shadow
+            // selected gets shadow - avoid elevation + overflow:hidden clash on Android
             ...(selected ? shadows.sm : {}),
           },
         ]}>
         {/* Today pill */}
         {today && !selected ? (
-          <View style={styles.todayPill}>
-            <RNText style={styles.todayPillText}>TODAY</RNText>
+          <View style={styles.todayPillWrap}>
+            <View style={styles.todayPill}>
+              <RNText style={styles.todayPillText}>TODAY</RNText>
+            </View>
           </View>
         ) : null}
 
@@ -331,12 +325,11 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -2,
   },
   cell: {
-    width: `${100 / 7}%`,
-    aspectRatio: Platform.OS === 'web' ? 0.92 : 0.95,
-    padding: 3.5,
+    width: '14.2857%',
+    aspectRatio: 1,
+    padding: 2,
   },
   cellInner: {
     flex: 1,
@@ -344,16 +337,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    paddingVertical: 6,
+    paddingVertical: 5,
     paddingHorizontal: 2,
-    minHeight: 54,
+    minHeight: 56,
     position: 'relative',
     overflow: 'hidden',
   },
-  todayPill: {
+  todayPillWrap: {
     position: 'absolute',
-    top: 4,
-    alignSelf: 'center',
+    top: 3,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  todayPill: {
     backgroundColor: colors.primary,
     paddingHorizontal: 5,
     paddingVertical: 1,

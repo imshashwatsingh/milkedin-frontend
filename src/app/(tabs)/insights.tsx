@@ -102,7 +102,7 @@ export default function InsightsScreen() {
   const showEmpty = !data.loading && !data.error && (data.data?.length ?? 0) === 0;
 
   return (
-    <Screen title="Insights" subtitle="Your milk, measured and understood">
+    <Screen title="Insights" subtitle="Your milk, measured and understood" scroll={false}>
       <ScrollView
         refreshControl={
           <RefreshControl
