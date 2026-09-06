@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrandHeader, AuthFooter } from '@/components/ui/AuthParts';
@@ -15,13 +15,22 @@ import { validateEmail, validatePassword } from '@/utils/validation';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const params = useLocalSearchParams<{ email?: string }>();
+  const cachedEmail = typeof params.email === 'string' ? params.email.trim().toLowerCase() : '';
+  const [email, setEmail] = useState(cachedEmail);
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Keep email in sync if user returns from forgot-password with a new email.
+  useEffect(() => {
+    if (cachedEmail && cachedEmail !== email) {
+      setEmail(cachedEmail);
+    }
+  }, [cachedEmail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async () => {
     setError(null);
@@ -67,10 +76,16 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <Screen title="Choose a new password" subtitle="Enter the code we emailed you" scroll maxWidth="narrow" contentStyle={{ paddingTop: spacing.xxl }}>
+    <Screen
+      title="Choose a new password"
+      subtitle={cachedEmail ? `Code sent to ${cachedEmail}` : 'Enter the code we emailed you'}
+      scroll
+      maxWidth="narrow"
+      contentStyle={{ paddingTop: spacing.xxl }}>
       <View style={styles.stack}>
         <BrandHeader tagline="Almost back in" />
         <Card style={styles.card}>
+          {cachedEmail ? <SuccessBanner message={`We sent a 6-digit code to ${cachedEmail}. Check inbox/spam.`} /> : null}
           <Field
             label="Email address"
             value={email}
